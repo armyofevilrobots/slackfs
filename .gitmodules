@@ -1,0 +1,3 @@
+[submodule "deps/slack-morphism-rust"]
+	path = deps/slack-morphism-rust
+	url = git@github.com:armyofevilrobots/slack-morphism-rust.git
