@@ -314,8 +314,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Get { remote_id, local } => get_file(&cfg, remote_id, None).await?,
         Commands::Put { local, remote } => rest_file_upload(&cfg, local, remote).await?,
-        _ => println!("Any other match..."),
-        Commands::Put { local, remote } => {}
+        _ => println!("Command not yet implemented."),
     }
 
     //rest_file_upload(&cfg).await?;
