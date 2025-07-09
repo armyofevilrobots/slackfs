@@ -30,7 +30,7 @@ jobs:
       #- name: Run tests
       #  run: cargo test --verbose util
       - name: Build
-        run: RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --verbose
+        run: cargo build --release --verbose
       - name: Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -69,7 +69,7 @@ jobs:
       #- name: Run tests
       #  run: cargo test --verbose util
       - name: Build
-        run: RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --verbose
+        run: cargo build --release --verbose
       - name: Release
         id: create_release
         uses: softprops/action-gh-release@v2
