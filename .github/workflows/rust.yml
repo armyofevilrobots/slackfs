@@ -30,7 +30,7 @@ jobs:
       #- name: Run tests
       #  run: cargo test --verbose util
       - name: Build
-        run: cargo build --release --verbose
+        run: RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --verbose
       - name: Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -52,7 +52,7 @@ jobs:
           asset_content_type: application/zip
 
   build_arm:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-22.04-arm
     permissions:
       contents: write
       # pull-requests: write
@@ -69,7 +69,7 @@ jobs:
       #- name: Run tests
       #  run: cargo test --verbose util
       - name: Build
-        run: cargo build --release --verbose
+        run: RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --verbose
       - name: Release
         id: create_release
         uses: softprops/action-gh-release@v2
