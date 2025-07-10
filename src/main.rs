@@ -12,7 +12,7 @@ use std::{
     collections::HashMap,
     fs,
     io::Cursor,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{LazyLock, Mutex},
 };
 
@@ -169,12 +169,13 @@ async fn list_channels(
     cfg: &SlackConfig,
     remote: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let client = SlackClient::new(SlackClientHyperConnector::new()?);
-    let token_value: SlackApiTokenValue = cfg.bearer_token.clone().into();
-    let token: SlackApiToken = SlackApiToken::new(token_value);
-    let session = client.open_session(&token);
-    let req = SlackApiConversationsListRequest::new();
+    // let client = SlackClient::new(SlackClientHyperConnector::new()?);
+    // let token_value: SlackApiTokenValue = cfg.bearer_token.clone().into();
+    // let token: SlackApiToken = SlackApiToken::new(token_value);
+    // let session = client.open_session(&token);
+    let session = get_session(&cfg).await?;
 
+    let req = SlackApiConversationsListRequest::new();
     let convos = session.conversations_list(&req).await?;
     //println!("Convos: {:?}", &convos);
     let remote = remote.clone();
@@ -267,17 +268,21 @@ async fn get_session(
 async fn get_file(
     cfg: &SlackConfig,
     remote_id: &String,
-    _local: Option<PathBuf>,
+    local: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let session = get_session(&cfg).await?;
     //println!("Getting INFO...");
     let req = SlackApiFilesInfoRequest::new(SlackFileId(remote_id.clone()));
     let file_info = session.files_info(&req).await?;
     //println!("Retrieving {:?}", &file_info);
+    let dest_file = match local {
+        Some(path) => path.to_owned(), //clone(),
+        None => PathBuf::from(file_info.file.name.expect("Can't get remote filename")).to_owned(),
+    };
     fetch_file(
         &cfg.bearer_token,
         &file_info.file.url_private_download.unwrap().to_string(),
-        &file_info.file.name.unwrap(),
+        dest_file.as_path(), //&file_info.file.name.unwrap(),
     )
     .await?;
     Ok(())
@@ -297,7 +302,7 @@ async fn delete_file(
 async fn fetch_file(
     token: &String,
     url: &String,
-    file_name: &String,
+    file_name: &Path, //&String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Fetchening {}!", url);
     let client = reqwest::Client::new();
@@ -318,10 +323,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Commands::Ls { remote } => {
             list_channels(&cfg, remote).await.unwrap();
         }
-        Commands::Get {
-            remote_id,
-            local: _,
-        } => get_file(&cfg, remote_id, None).await?,
+        Commands::Get { remote_id, local } => get_file(&cfg, remote_id, local).await?,
         Commands::Put { local, remote } => rest_file_upload(&cfg, local, remote).await?,
         Commands::Delete { remote_id } => delete_file(&cfg, remote_id).await?,
         _ => println!("Command not yet implemented."),
