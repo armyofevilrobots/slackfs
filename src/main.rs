@@ -1,6 +1,5 @@
 extern crate tokio;
 use colored::Colorize;
-use hyper::client::*;
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::connect::HttpConnector;
 use mime_guess::from_path;
@@ -11,7 +10,6 @@ use slack_morphism::prelude::*;
 use clap::{Parser, Subcommand};
 use std::{
     collections::HashMap,
-    fmt::Display,
     fs,
     io::Cursor,
     path::PathBuf,
@@ -53,15 +51,12 @@ enum Commands {
         local: Option<PathBuf>,
     },
     Delete {
-        remote: PathBuf,
+        remote_id: String,
     },
     Stat {
         remote: PathBuf,
     },
     Ls {
-        remote: Option<PathBuf>,
-    },
-    Cd {
         remote: Option<PathBuf>,
     },
 }
@@ -80,8 +75,8 @@ async fn rest_file_upload(
     let convos = session.conversations_list(&req).await?.channels;
 
     let channel_name = match &remote.strip_prefix("/") {
-        Ok(path) => path.clone(),
-        Err(_) => remote.as_path().clone(),
+        Ok(path) => path,
+        Err(_) => remote.as_path(),
     };
     let channel_name = channel_name
         .as_os_str()
@@ -118,7 +113,7 @@ async fn rest_file_upload(
         );
         //println!("My guessed mime type is: {}", mime);
 
-        let file_upload_resp = session.files_upload_via_url(&file_upload_req).await?;
+        let _file_upload_resp = session.files_upload_via_url(&file_upload_req).await?;
         //println!("file_upload_resp: {:#?}", &file_upload_resp);
 
         let complete_file_upload_req =
@@ -127,7 +122,7 @@ async fn rest_file_upload(
             )])
             .with_channel_id(cid);
 
-        let complete_file_upload_resp = session
+        let _complete_file_upload_resp = session
             .files_complete_upload_external(&complete_file_upload_req)
             .await?;
         //println!(
@@ -207,8 +202,8 @@ async fn list_channels(
     } else if remote.is_some() {
         let remote = remote.unwrap().to_path_buf();
         let channel_name = match &remote.strip_prefix("/") {
-            Ok(path) => path.clone(),
-            Err(_) => remote.as_path().clone(),
+            Ok(path) => path,
+            Err(_) => remote.as_path(),
         };
         let req = SlackApiConversationsListRequest::new();
         let convos = session.conversations_list(&req).await?;
@@ -272,7 +267,7 @@ async fn get_session(
 async fn get_file(
     cfg: &SlackConfig,
     remote_id: &String,
-    local: Option<PathBuf>,
+    _local: Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let session = get_session(&cfg).await?;
     //println!("Getting INFO...");
@@ -285,6 +280,17 @@ async fn get_file(
         &file_info.file.name.unwrap(),
     )
     .await?;
+    Ok(())
+}
+
+async fn delete_file(
+    cfg: &SlackConfig,
+    remote_id: &String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let session = get_session(&cfg).await?;
+    //println!("Getting INFO...");
+    let req = SlackApiFilesDeleteRequest::new(SlackFileId(remote_id.clone()));
+    session.files_delete(&req).await?;
     Ok(())
 }
 
@@ -312,8 +318,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Commands::Ls { remote } => {
             list_channels(&cfg, remote).await.unwrap();
         }
-        Commands::Get { remote_id, local } => get_file(&cfg, remote_id, None).await?,
+        Commands::Get {
+            remote_id,
+            local: _,
+        } => get_file(&cfg, remote_id, None).await?,
         Commands::Put { local, remote } => rest_file_upload(&cfg, local, remote).await?,
+        Commands::Delete { remote_id } => delete_file(&cfg, remote_id).await?,
         _ => println!("Command not yet implemented."),
     }
 
